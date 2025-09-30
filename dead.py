@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# --- Title ---
+# --- Page Title ---
+st.set_page_config(page_title="Non-Selling Items Dashboard", layout="wide")
 st.title("High-Value Non-Selling Items Dashboard")
 
 # --- Load Excel Files ---
-file1 = "unwanted1.xlsx"  # replace with your actual file path
-file2 = "unwanted2.xlsx"  # replace with your actual file path
+file1 = "unwanted1.xlsx"
+file2 = "unwanted2.xlsx"
 
 df1 = pd.read_excel(file1)
 df2 = pd.read_excel(file2)
@@ -23,11 +24,28 @@ zero_sales_items = df[df['Total Sales'] == 0].copy()
 if 'Stock Value' not in zero_sales_items.columns or zero_sales_items['Stock Value'].isnull().all():
     zero_sales_items['Stock Value'] = zero_sales_items['Cost'] * zero_sales_items['Stock']
 
-# --- Category Filter ---
+# --- Sidebar Filters ---
+st.sidebar.header("Filters")
+
+# Category filter with "All"
 categories = zero_sales_items['Category'].dropna().unique().tolist()
 categories.sort()
-selected_categories = st.multiselect("Filter by Category", categories, default=categories)
-filtered_items = zero_sales_items[zero_sales_items['Category'].isin(selected_categories)]
+categories = ["All"] + categories
+selected_category = st.sidebar.selectbox("Select Category", categories)
+
+if selected_category != "All":
+    filtered_items = zero_sales_items[zero_sales_items['Category'] == selected_category]
+else:
+    filtered_items = zero_sales_items.copy()
+
+# Item filter (optional, itemwise)
+items = filtered_items['Item Name'].dropna().unique().tolist()
+items.sort()
+items = ["All"] + items
+selected_item = st.sidebar.selectbox("Select Item", items)
+
+if selected_item != "All":
+    filtered_items = filtered_items[filtered_items['Item Name'] == selected_item]
 
 # --- Create Tabs ---
 tab1, tab2 = st.tabs(["Top Valued Items", "Suppliers Analysis"])
@@ -36,8 +54,8 @@ tab1, tab2 = st.tabs(["Top Valued Items", "Suppliers Analysis"])
 with tab1:
     st.subheader("Top Non-Selling Items by Value and Quantity")
 
-    # Sort by Stock Value
     top_value_items = filtered_items.sort_values(by='Stock Value', ascending=False)
+
     st.dataframe(top_value_items[['Item Name', 'Category', 'Stock', 'Cost', 'Stock Value']].head(20))
 
     # Horizontal bar chart for Stock Value
@@ -47,9 +65,11 @@ with tab1:
         y='Item Name',
         orientation='h',
         text='Stock Value',
-        title="Top 20 Non-Selling Items by Stock Value"
+        title="Top 20 Non-Selling Items by Stock Value",
+        height=600
     )
-    fig_value.update_layout(yaxis={'categoryorder':'total ascending'})
+    fig_value.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
+    fig_value.update_traces(marker_color='indianred', marker_line_color='black', marker_line_width=1.5)
     st.plotly_chart(fig_value, use_container_width=True)
 
     # Horizontal bar chart for Quantity (Stock)
@@ -59,9 +79,11 @@ with tab1:
         y='Item Name',
         orientation='h',
         text='Stock',
-        title="Top 20 Non-Selling Items by Quantity"
+        title="Top 20 Non-Selling Items by Quantity",
+        height=600
     )
-    fig_qty.update_layout(yaxis={'categoryorder':'total ascending'})
+    fig_qty.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
+    fig_qty.update_traces(marker_color='mediumseagreen', marker_line_color='black', marker_line_width=1.5)
     st.plotly_chart(fig_qty, use_container_width=True)
 
 # ---------------- Tab 2: Suppliers Analysis ----------------
@@ -80,9 +102,11 @@ with tab2:
         y='LP Supplier',
         orientation='h',
         text='Stock Value',
-        title="Suppliers by Total Value of Non-Selling Items"
+        title="Suppliers by Total Value of Non-Selling Items",
+        height=600
     )
-    fig_supplier.update_layout(yaxis={'categoryorder':'total ascending'})
+    fig_supplier.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
+    fig_supplier.update_traces(marker_color='royalblue', marker_line_color='black', marker_line_width=1.5)
     st.plotly_chart(fig_supplier, use_container_width=True)
 
     # Optional: select supplier to see their top items
