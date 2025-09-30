@@ -6,8 +6,8 @@ import plotly.express as px
 st.title("High-Value Non-Selling Items Dashboard")
 
 # --- Load Excel Files ---
-file1 = "unwanted purchase with 0 sales for past 3 months and purchased on july ..still zero sales(2).xlsx"  # replace with your actual file path
-file2 = "dead_stock2.xlsx"  # replace with your actual file path
+file1 = "unwanted1.xlsx"  # replace with your actual file path
+file2 = "unwanted2.xlsx"  # replace with your actual file path
 
 df1 = pd.read_excel(file1)
 df2 = pd.read_excel(file2)
