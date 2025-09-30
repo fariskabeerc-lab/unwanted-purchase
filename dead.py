@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.express as px
 
 # --- Page Title ---
-st.set_page_config(page_title="Non-Selling Items Dashboard", layout="wide")
-st.title("High-Value Non-Selling Items Dashboard")
+st.set_page_config(page_title="Unwanted Purchase Dashboard", layout="wide")
+st.title("Unwanted Purchase Quantity Dashboard")
 
 # --- Load Excel Files ---
 file1 = "unwanted1.xlsx"
@@ -20,10 +20,6 @@ df.columns = df.columns.str.strip()
 # --- Filter zero sales items ---
 zero_sales_items = df[df['Total Sales'] == 0].copy()
 
-# --- Calculate Stock Value if not present ---
-if 'Stock Value' not in zero_sales_items.columns or zero_sales_items['Stock Value'].isnull().all():
-    zero_sales_items['Stock Value'] = zero_sales_items['Cost'] * zero_sales_items['Stock']
-
 # --- Sidebar Filters ---
 st.sidebar.header("Filters")
 
@@ -38,7 +34,7 @@ if selected_category != "All":
 else:
     filtered_items = zero_sales_items.copy()
 
-# Item filter (optional, itemwise)
+# Item filter (optional)
 items = filtered_items['Item Name'].dropna().unique().tolist()
 items.sort()
 items = ["All"] + items
@@ -48,61 +44,62 @@ if selected_item != "All":
     filtered_items = filtered_items[filtered_items['Item Name'] == selected_item]
 
 # --- Create Tabs ---
-tab1, tab2 = st.tabs(["Top Valued Items", "Suppliers Analysis"])
+tab1, tab2 = st.tabs(["Top Unwanted Purchase Items", "Suppliers Analysis"])
 
-# ---------------- Tab 1: Top Valued Items ----------------
+# ---------------- Tab 1: Top Unwanted Purchase Items ----------------
 with tab1:
-    st.subheader("Top Non-Selling Items by Value and Quantity")
+    st.subheader("Top Unwanted Purchase Items by Quantity")
 
-    top_value_items = filtered_items.sort_values(by='Stock Value', ascending=False)
+    top_items_qty = filtered_items.sort_values(by='Stock', ascending=False)
 
-    st.dataframe(top_value_items[['Item Name', 'Category', 'Stock', 'Cost', 'Stock Value']].head(20))
+    st.dataframe(top_items_qty[['Item Name', 'Category', 'Stock', 'LP Qty']].head(20))
 
-    # Horizontal bar chart for Stock Value
-    fig_value = px.bar(
-        top_value_items.head(20),
-        x='Stock Value',
-        y='Item Name',
-        orientation='h',
-        text='Stock Value',
-        title="Top 20 Non-Selling Items by Stock Value",
-        height=600
-    )
-    fig_value.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
-    fig_value.update_traces(marker_color='indianred', marker_line_color='black', marker_line_width=1.5)
-    st.plotly_chart(fig_value, use_container_width=True)
-
-    # Horizontal bar chart for Quantity (Stock)
+    # Horizontal bar chart for Stock Quantity
     fig_qty = px.bar(
-        top_value_items.head(20),
+        top_items_qty.head(20),
         x='Stock',
         y='Item Name',
         orientation='h',
         text='Stock',
-        title="Top 20 Non-Selling Items by Quantity",
+        title="Top 20 Unwanted Purchase Items by Quantity",
         height=600
     )
     fig_qty.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
-    fig_qty.update_traces(marker_color='mediumseagreen', marker_line_color='black', marker_line_width=1.5)
+    fig_qty.update_traces(marker_color='indianred', marker_line_color='black', marker_line_width=1.5)
     st.plotly_chart(fig_qty, use_container_width=True)
+
+    # Optional: bar chart for LP Qty if available
+    if 'LP Qty' in filtered_items.columns:
+        fig_lpqty = px.bar(
+            top_items_qty.head(20),
+            x='LP Qty',
+            y='Item Name',
+            orientation='h',
+            text='LP Qty',
+            title="Top 20 Unwanted Purchase Items by Purchased Quantity (LP Qty)",
+            height=600
+        )
+        fig_lpqty.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
+        fig_lpqty.update_traces(marker_color='mediumseagreen', marker_line_color='black', marker_line_width=1.5)
+        st.plotly_chart(fig_lpqty, use_container_width=True)
 
 # ---------------- Tab 2: Suppliers Analysis ----------------
 with tab2:
-    st.subheader("Suppliers with Highest Value of Non-Selling Items")
+    st.subheader("Suppliers with Highest Unwanted Purchase Quantity")
 
-    supplier_analysis = filtered_items.groupby('LP Supplier')['Stock Value'].sum().reset_index()
-    supplier_analysis = supplier_analysis.sort_values(by='Stock Value', ascending=False)
+    supplier_analysis = filtered_items.groupby('LP Supplier')['Stock'].sum().reset_index()
+    supplier_analysis = supplier_analysis.sort_values(by='Stock', ascending=False)
 
     st.dataframe(supplier_analysis)
 
-    # Horizontal bar chart for suppliers
+    # Horizontal bar chart for suppliers by quantity
     fig_supplier = px.bar(
         supplier_analysis,
-        x='Stock Value',
+        x='Stock',
         y='LP Supplier',
         orientation='h',
-        text='Stock Value',
-        title="Suppliers by Total Value of Non-Selling Items",
+        text='Stock',
+        title="Suppliers by Total Unwanted Purchase Quantity",
         height=600
     )
     fig_supplier.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
@@ -111,6 +108,6 @@ with tab2:
 
     # Optional: select supplier to see their top items
     supplier_select = st.selectbox("Select Supplier to view top items", supplier_analysis['LP Supplier'].unique())
-    top_items = filtered_items[filtered_items['LP Supplier'] == supplier_select]
-    top_items = top_items.sort_values(by='Stock Value', ascending=False)
-    st.dataframe(top_items[['Item Name', 'Category', 'Stock', 'Cost', 'Stock Value']].head(20))
+    top_items_supplier = filtered_items[filtered_items['LP Supplier'] == supplier_select]
+    top_items_supplier = top_items_supplier.sort_values(by='Stock', ascending=False)
+    st.dataframe(top_items_supplier[['Item Name', 'Category', 'Stock', 'LP Qty']].head(20))
