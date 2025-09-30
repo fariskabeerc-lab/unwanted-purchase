@@ -17,8 +17,11 @@ df2 = pd.read_excel(file2)
 df = pd.concat([df1, df2], ignore_index=True)
 df.columns = df.columns.str.strip()
 
+# --- Calculate Stock Value if not present ---
+if 'Stock Value' not in df.columns or df['Stock Value'].isnull().all():
+    df['Stock Value'] = df['Cost'] * df['Stock']
+
 # --- Filter unwanted re-purchases ---
-# Already in stock (Stock > 0), purchased again (LP Qty > 0), and no sales (Total Sales = 0)
 unwanted_purchases = df[(df['Stock'] > 0) & (df['LP Qty'] > 0) & (df['Total Sales'] == 0)].copy()
 
 # --- Sidebar Filters ---
@@ -52,7 +55,7 @@ with tab1:
     st.subheader("Top Unwanted Re-Purchased Items by Quantity")
 
     top_items_qty = filtered_items.sort_values(by='LP Qty', ascending=False)
-    st.dataframe(top_items_qty[['Item Name', 'Category', 'Stock', 'LP Qty']].head(20))
+    st.dataframe(top_items_qty[['Item Name', 'Category', 'Stock', 'LP Qty', 'Stock Value']].head(20))
 
     # Horizontal bar chart for LP Qty (Purchased Quantity)
     fig_lpqty = px.bar(
@@ -72,13 +75,17 @@ with tab1:
 with tab2:
     st.subheader("Suppliers Contributing to Unwanted Re-Purchases")
 
-    supplier_analysis = filtered_items.groupby('LP Supplier')['LP Qty'].sum().reset_index()
+    # Aggregate both LP Qty and Stock Value per supplier
+    supplier_analysis = filtered_items.groupby('LP Supplier').agg({
+        'LP Qty': 'sum',
+        'Stock Value': 'sum'
+    }).reset_index()
     supplier_analysis = supplier_analysis.sort_values(by='LP Qty', ascending=False)
 
     st.dataframe(supplier_analysis)
 
-    # Horizontal bar chart for suppliers by LP Qty
-    fig_supplier = px.bar(
+    # Horizontal bar chart: LP Qty
+    fig_supplier_qty = px.bar(
         supplier_analysis,
         x='LP Qty',
         y='LP Supplier',
@@ -87,12 +94,26 @@ with tab2:
         title="Suppliers by Total Unwanted Re-Purchase Quantity",
         height=600
     )
-    fig_supplier.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
-    fig_supplier.update_traces(marker_color='royalblue', marker_line_color='black', marker_line_width=1.5)
-    st.plotly_chart(fig_supplier, use_container_width=True)
+    fig_supplier_qty.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
+    fig_supplier_qty.update_traces(marker_color='royalblue', marker_line_color='black', marker_line_width=1.5)
+    st.plotly_chart(fig_supplier_qty, use_container_width=True)
+
+    # Horizontal bar chart: Stock Value
+    fig_supplier_value = px.bar(
+        supplier_analysis,
+        x='Stock Value',
+        y='LP Supplier',
+        orientation='h',
+        text='Stock Value',
+        title="Suppliers by Stock Value of Unwanted Re-Purchases",
+        height=600
+    )
+    fig_supplier_value.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=150, r=50, t=50, b=50))
+    fig_supplier_value.update_traces(marker_color='darkorange', marker_line_color='black', marker_line_width=1.5)
+    st.plotly_chart(fig_supplier_value, use_container_width=True)
 
     # Optional: select supplier to see their top items
     supplier_select = st.selectbox("Select Supplier to view top items", supplier_analysis['LP Supplier'].unique())
     top_items_supplier = filtered_items[filtered_items['LP Supplier'] == supplier_select]
     top_items_supplier = top_items_supplier.sort_values(by='LP Qty', ascending=False)
-    st.dataframe(top_items_supplier[['Item Name', 'Category', 'Stock', 'LP Qty']].head(20))
+    st.dataframe(top_items_supplier[['Item Name', 'Category', 'Stock', 'LP Qty', 'Stock Value']].head(20))
